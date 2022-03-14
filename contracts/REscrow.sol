@@ -1,78 +1,134 @@
 // SPDX-License-Identifier: SoftProDev
 
-pragma solidity ^0.7.1;
+pragma solidity ^0.8.0;
 
+/**
+ * @dev String operations.
+ */
+library Strings {
+    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
-contract EscrowService  {
-        //Version:  v1.0
-        
-        address public admin;
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` decimal representation.
+     */
+    function toString(uint256 value) internal pure returns (string memory) {
+        // Inspired by OraclizeAPI's implementation - MIT licence
+        // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
 
-        
-        //Each buyer address consist of an array of EscrowStruct
-        //Used to store buyer's transactions and for buyers to interact with his transactions. (Such as releasing funds to seller)
-        struct EscrowStruct
-        {    
-            address buyer;          //Person who is making payment
-            address seller;         //Person who will receive funds
-            address escrow_agent;   //Escrow agent to resolve disputes, if any
-                                       
-            uint escrow_fee;        //Fee charged by escrow
-            uint amount;            //Amount of Ether (in Wei) seller will receive after fees
-
-            bool escrow_intervention; //Buyer or Seller can call for Escrow intervention
-            bool release_approval;   //Buyer or Escrow(if escrow_intervention is true) can approve release of funds to seller
-            bool refund_approval;    //Seller or Escrow(if escrow_intervention is true) can approve refund of funds to buyer 
-
-            bytes32 notes;             //Notes for Seller
-            
+        if (value == 0) {
+            return "0";
         }
-
-        struct TransactionStruct
-        {                        
-            //Links to transaction from buyer
-            address buyer;          //Person who is making payment
-            uint buyer_nounce;         //Nounce of buyer transaction                            
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
         }
-
-
-        
-        //Database of Buyers. Each buyer then contain an array of his transactions
-        mapping(address => EscrowStruct[]) public buyerDatabase;
-
-        //Database of Seller and Escrow Agent
-        mapping(address => TransactionStruct[]) public sellerDatabase;       
-        mapping(address => TransactionStruct[]) public escrowDatabase;
-               
-        //Every address have a Funds bank. All refunds, sales and escrow comissions are sent to this bank. Address owner can withdraw them at any time.
-        mapping(address => uint) public Funds;
-
-        mapping(address => uint) public escrowFee;
-
-
-        //Constructor. Set contract creator/admin
-        constructor() {
-            admin = msg.sender;
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
         }
+        return string(buffer);
+    }
 
-        function fundAccount(address sender_)  external payable
-        {
-            //LogFundsReceived(msg.sender, msg.value);
-            // Add funds to the sender's account
-            Funds[sender_] += msg.value;   
-            
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.
+     */
+    function toHexString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0x00";
         }
-
-        function setEscrowFee(uint fee) external{
-
-            //Allowed fee range: 0.1% to 10%, in increments of 0.1%
-            require (fee >= 1 && fee <= 100);
-            escrowFee[msg.sender] = fee;
+        uint256 temp = value;
+        uint256 length = 0;
+        while (temp != 0) {
+            length++;
+            temp >>= 8;
         }
+        return toHexString(value, length);
+    }
 
-        function getEscrowFee(address escrowAddress) internal view returns (uint) {
-            return (escrowFee[escrowAddress]);
+    /**
+     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
+     */
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        for (uint256 i = 2 * length + 1; i > 1; --i) {
+            buffer[i] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
         }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
+    }
+}
 
-       
+abstract contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+
+    function _msgData() internal view virtual returns (bytes calldata) {
+        return msg.data;
+    }
+}
+
+abstract contract Ownable is Context {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev Initializes the contract setting the deployer as the initial owner.
+     */
+    constructor() {
+        _transferOwnership(_msgSender());
+    }
+
+    /**
+     * @dev Returns the address of the current owner.
+     */
+    function owner() public view virtual returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        _;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public virtual onlyOwner {
+        _transferOwnership(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Internal function without access restriction.
+     */
+    function _transferOwnership(address newOwner) internal virtual {
+        address oldOwner = _owner;
+        _owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
 }
