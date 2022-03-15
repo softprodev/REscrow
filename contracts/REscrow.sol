@@ -132,3 +132,86 @@ abstract contract Ownable is Context {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 }
+
+
+contract RandomNumArray {
+    uint randArrayFixedSize = 10;
+    uint[] public randArray = new uint[](randArrayFixedSize);
+    uint maxRandNumber = 9999999999;
+
+    function generateRandomNumber() public view returns(uint){
+        return uint(keccak256(abi.encodePacked(block.timestamp,block.difficulty,  
+        msg.sender))) % maxRandNumber;
+    }
+
+    function createRandomArray() public view returns (uint256[] memory){
+        uint[] memory randomArray = new uint[](randArrayFixedSize);
+        for(uint i = 0; i< randArrayFixedSize ; i++){
+            randomArray[i] = uint(keccak256(abi.encodePacked(block.timestamp+i,block.difficulty,msg.sender))) % maxRandNumber;
+            if (randomArray[i] == 0){
+                randomArray[i] = uint(keccak256(abi.encodePacked(block.timestamp+i,block.difficulty,msg.sender))) % maxRandNumber;
+            }           
+        }
+        return randomArray;
+    }
+    
+    function generateRandomArray()public returns (uint256[] memory){
+        uint[] memory temprandomArray = createRandomArray();
+        for(uint i = 0; i< randArrayFixedSize ; i++){
+            randArray[i] = temprandomArray[i];                      
+        }
+        return randArray;
+    }
+    
+    function get(uint256 i) public view returns (uint256) {
+        return randArray[i];
+    }
+
+    function getArr() public view returns (uint256[] memory) {
+        return randArray;
+    }
+
+    function getLength() public view returns (uint) {
+        return randArray.length;
+    }
+}
+
+contract testEscrow is RandomNumArray, Ownable {
+    struct EscrowStruct
+    {    
+        uint escrowID;
+        address buyer;
+        uint[] buyerRandomArray;
+        bool[] buyerRandomArrayIsRedeemed;
+        address[] sellerAddress;
+        uint amount;
+        uint redeemAmountPerNumber;
+        uint createdDate;
+        bool isActive;           
+    }
+
+    struct SellerStruct
+    {    
+        uint escrowID;
+        address seller;
+        uint[] sellerRandomArray;
+        uint createdDate;
+        uint redeemedAmount; 
+    }
+
+    mapping(address => EscrowStruct[]) public buyerDatabase;
+    mapping(address => SellerStruct[]) public sellerDatabase;
+
+    EscrowStruct[] public escrowArray;
+    SellerStruct[] public sellerArray;
+    uint public escrowCount;
+
+    constructor(){
+        escrowCount = 0;
+    }
+    function getCurrentTimeStamp() public view returns(uint){
+        return block.timestamp;
+    }
+
+ 
+}
