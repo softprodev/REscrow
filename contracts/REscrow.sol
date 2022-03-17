@@ -175,43 +175,92 @@ contract RandomNumArray {
         return randArray.length;
     }
 }
-
 contract testEscrow is RandomNumArray, Ownable {
     struct EscrowStruct
     {    
         uint escrowID;
         address buyer;
-        uint[] buyerRandomArray;
-        bool[] buyerRandomArrayIsRedeemed;
-        address[] sellerAddress;
+        uint[] postedAssets;
+        bool[] postedAssetsIsRedeemed;
+        address[] sellerAddressArray;
         uint amount;
         uint redeemAmountPerNumber;
         uint createdDate;
-        bool isActive;           
+        bool isActive;  
+        uint escrowFee;         
     }
 
     struct SellerStruct
     {    
         uint escrowID;
         address seller;
-        uint[] sellerRandomArray;
+        uint[] collectedAssets;
         uint createdDate;
         uint redeemedAmount; 
     }
 
-    mapping(address => EscrowStruct[]) public buyerDatabase;
-    mapping(address => SellerStruct[]) public sellerDatabase;
+    mapping(address => EscrowStruct[]) private buyerDatabase;
+    mapping(address => SellerStruct[]) private sellerDatabase;
 
-    EscrowStruct[] public escrowArray;
-    SellerStruct[] public sellerArray;
+    EscrowStruct[] private escrowArray;
+    SellerStruct[] private sellerArray;
     uint public escrowCount;
+    uint private contractEscrowFee;
+    uint private partyApercentage;
+    uint private partyBpercentage;
 
     constructor(){
         escrowCount = 0;
-    }
-    function getCurrentTimeStamp() public view returns(uint){
-        return block.timestamp;
+        contractEscrowFee = 10;
+        partyApercentage = 20;
+        partyBpercentage = 80;
     }
 
- 
+
+    // Functions for OnlyOwner
+
+    // Get Buyer Database By Address - Only Owner
+    function getBuyerDataBaseByAddress(address _buyerAddress)public view onlyOwner returns(EscrowStruct[] memory){
+        return buyerDatabase[_buyerAddress];
+    }
+    // Get Seller Database By Address - Only Owner
+    function getSellerDataBaseByAddress(address _sellerAddress)public view onlyOwner returns(SellerStruct[] memory){
+        return sellerDatabase[_sellerAddress];
+    }
+    // Get EscrowArray - Only Owner
+    function getEscrowArray()public view onlyOwner returns(EscrowStruct[] memory){
+        return escrowArray;
+    }
+    // Get EscrowArray - Only Owner
+    function getSellerArray()public view onlyOwner returns(SellerStruct[] memory){
+        return sellerArray;
+    }
+    // Get Escrow By ID
+    function getEscrowByID(uint _escrowID)public view onlyOwner returns(EscrowStruct memory,bool){
+        bool isExist = false;
+        EscrowStruct memory escrow;
+        for (uint i = 0; i < escrowArray.length; i++)
+        {
+            if (escrowArray[i].escrowID == _escrowID){
+                escrow = escrowArray[i];
+                isExist = true;
+            }
+        }
+        return (escrow, isExist);
+    }
+    // Get Seller By Address
+    function getSellerInfoByAddressAndEscrowID(address _sellerAddress,uint _escrowID) public view onlyOwner returns(SellerStruct memory, bool){
+        bool isExist = false;
+        SellerStruct memory sellerInfo;
+
+        for (uint i = 0; i < sellerDatabase[_sellerAddress].length; i++)
+        {
+            if (sellerDatabase[_sellerAddress][i].escrowID == _escrowID){
+                sellerInfo = sellerDatabase[_sellerAddress][i];
+                isExist = true;
+            }
+        }
+        return (sellerInfo, isExist);
+    }
+
 }
