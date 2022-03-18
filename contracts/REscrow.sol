@@ -263,4 +263,133 @@ contract testEscrow is RandomNumArray, Ownable {
         return (sellerInfo, isExist);
     }
 
+     // Set Escrow Fee By ID
+    function setEscrowStatusByID(uint _escrowID, bool _isActive) external view onlyOwner {
+        (EscrowStruct memory escrowInfo, bool isExist) = getEscrowByID(_escrowID);
+        require(isExist, "EscrowID is invaild in getListOfSellersByEscrowID");
+        escrowInfo.isActive = _isActive;
+    }
+    // Get Escrow Fee By ID
+    function getEscrowStatusByID(uint _escrowID) public view onlyOwner returns(bool){
+        (EscrowStruct memory escrowInfo, bool isExist) = getEscrowByID(_escrowID);
+        require(isExist, "EscrowID is invaild in getListOfSellersByEscrowID");
+        return escrowInfo.isActive;
+    }
+    // Set Escrow Fee By ID
+    function setEscrowFeeByID(uint _escrowID,uint _escrowFee) external view onlyOwner {
+        (EscrowStruct memory escrowInfo, bool isExist) = getEscrowByID(_escrowID);
+        require(isExist, "EscrowID is invaild in getListOfSellersByEscrowID");
+        escrowInfo.escrowFee = _escrowFee;
+    }
+    // Get Escrow Fee By ID
+    function getEscrowFeeByID(uint _escrowID) public view onlyOwner returns(uint){
+        (EscrowStruct memory escrowInfo, bool isExist) = getEscrowByID(_escrowID);
+        require(isExist, "EscrowID is invaild in getListOfSellersByEscrowID");
+        return escrowInfo.escrowFee;
+    }
+    // Set Contract Escrow Fee
+    function setContractEscrowFee(uint _escrowFee) external onlyOwner {
+        contractEscrowFee = _escrowFee;
+    }
+    // Get Contract Escrow Fee
+    function getContractEscrowFee() public view onlyOwner returns(uint){
+        return contractEscrowFee;
+    }
+    // Set Contract Escrow Fee
+    function setSplitPercentage(uint _partyApercentage, uint _partyBpercentage) external onlyOwner {
+        require(_partyApercentage+_partyBpercentage== 100,"Party A + Party B should be 100%");
+        partyApercentage = _partyBpercentage;
+        partyBpercentage = _partyBpercentage;
+    }
+    // Get Contract Escrow Fee
+    function getSplitPercentage() public view onlyOwner returns(uint, uint){
+        return (partyApercentage, partyBpercentage);
+    }
+
+    // Functions for finding Mached assets
+
+   
+    // Find Matched Assets by Escrow ID and collected assets    
+    function getMatchedAssets(uint _escrowID, uint[] memory _collectedAssets) private returns(uint[] memory){   
+
+        (uint[] memory postedAssets, bool[] memory postedAssetsIsRedeemed, bool isExist) = getPostedAssetsByEscrowID(_escrowID);
+        require(isExist, "EscrowID is invaild");
+
+        uint matchedCount = getCountOfMatchedAssets(_escrowID, _collectedAssets);
+        uint[] memory matchedAssets = new uint[](matchedCount);
+        uint matchedCounttemp = 0;
+
+        for (uint i = 0; i < postedAssets.length; i++)
+        {
+            for (uint j = 0; j < _collectedAssets.length; j++)
+            {
+                if (postedAssets[i] == _collectedAssets[j]){
+                    if (postedAssetsIsRedeemed[i] != true){
+                        escrowArray[_escrowID].postedAssetsIsRedeemed[i] = true;
+                        (address buyerAddress,,) = getBuyerAddressByEscrowID(_escrowID);
+                        uint index = getBuyerDataBaseIndexByAddress(buyerAddress, _escrowID);
+                        buyerDatabase[buyerAddress][index].postedAssetsIsRedeemed[i] = true;
+                        matchedAssets[matchedCounttemp] = postedAssets[i];
+                        matchedCounttemp += 1;
+                    }
+                }
+            }
+        }
+        return matchedAssets;
+    }
+
+    // Get count of matched assets
+    function getCountOfMatchedAssets(uint _escrowID, uint[] memory _collectedAssets) private view returns(uint){    
+        (uint[] memory postedAssets, bool[] memory postedAssetsIsRedeemed, bool isExist) = getPostedAssetsByEscrowID(_escrowID);
+        require(isExist, "EscrowID is invaild");
+        uint matchedCount = 0;
+        for (uint i = 0; i < postedAssets.length; i++)
+        {
+            for (uint j = 0; j < _collectedAssets.length; j++)
+            {
+                if (postedAssets[i] == _collectedAssets[j]){
+                    if (postedAssetsIsRedeemed[i] != true){
+                         matchedCount += 1;
+                    }
+                }
+            }
+        }
+        return matchedCount;
+    }
+
+    // Get posted Assets by escrow ID
+    function getPostedAssetsByEscrowID(uint _escrowID) private view returns(uint[] memory,bool[] memory, bool){
+        (address buyerAddress,bool isExist,) = getBuyerAddressByEscrowID(_escrowID);
+        require(isExist, "EscrowID is invaild");
+        uint[] memory postedAssets;
+        bool[] memory postedAssetsIsRedeemed;
+        bool isExistInBuyerDatabase = false;
+
+        for (uint i = 0; i < buyerDatabase[buyerAddress].length; i++){
+            if (buyerDatabase[buyerAddress][i].escrowID == _escrowID){
+                postedAssets = buyerDatabase[buyerAddress][i].postedAssets;
+                postedAssetsIsRedeemed = buyerDatabase[buyerAddress][i].postedAssetsIsRedeemed;
+                isExistInBuyerDatabase = true;
+            }
+        }
+        
+        return (postedAssets, postedAssetsIsRedeemed,isExistInBuyerDatabase);
+    }
+
+    // Get Buyer Address by Escrow ID
+    function getBuyerAddressByEscrowID(uint _escrowID) public view returns(address, bool,bool){
+        bool isExist = false;
+        bool isActive = false;
+        address buyerAddress;
+        for (uint i = 0; i < escrowArray.length; i++)
+        {
+            if (escrowArray[i].escrowID == _escrowID){
+                buyerAddress = escrowArray[i].buyer;
+                isExist = true;
+                isActive = escrowArray[i].isActive;
+            }
+        }
+        return (buyerAddress, isExist,isActive);
+    }
+
 }
